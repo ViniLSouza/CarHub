@@ -37,7 +37,6 @@ import {
 import {
   getOptionId,
   getOptionName,
-  type ApiOption,
   type VehicleType,
 } from '../../api/fipeApi'
 import {
@@ -126,18 +125,13 @@ export function EstoquePage() {
     vehicles,
     soldVehicles,
     selectedVehicle,
-    expenses,
     loadingVehicles,
     loadingSoldVehicles,
     loadingVehicle,
-    loadingExpenses,
     savingVehicle,
     sellingVehicle,
     updatingVehicle,
     deletingVehicle,
-    savingExpense,
-    updatingExpense,
-    deletingExpense,
     vehiclesError,
     soldVehiclesError,
     vehicleError,
@@ -149,8 +143,6 @@ export function EstoquePage() {
   const stockCars = useMemo(() => vehicles.map(mapVehicleToStockCar), [vehicles])
   const soldStockCars = useMemo(() => soldVehicles.map(mapVehicleToStockCar), [soldVehicles])
   const selectedVehicleDetails = selectedVehicle
-  const isVehicleBusy = loadingVehicle || updatingVehicle || deletingVehicle
-  const isExpenseBusy = loadingExpenses || savingExpense || updatingExpense || deletingExpense
 
   const openApiResponseDialog = (title: string, message: string, severity: 'success' | 'error') => {
     setApiResponseDialog({ open: true, title, message, severity })
@@ -521,7 +513,7 @@ export function EstoquePage() {
     }
 
     try {
-      const createdVehicle = await dispatch(createStockVehicle(payload)).unwrap()
+      await dispatch(createStockVehicle(payload)).unwrap()
 
       handleCloseModal()
       openApiResponseDialog('Cadastro concluido', 'Veiculo cadastrado com sucesso.', 'success')
