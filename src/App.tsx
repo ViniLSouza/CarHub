@@ -14,7 +14,7 @@ import {
 } from '@mui/material'
 import MenuIcon from '@mui/icons-material/Menu'
 import { useState } from 'react'
-import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Link, Route, Routes, useLocation } from 'react-router-dom'
 import { FipePage } from './pages/Fipe/FipePage'
 import { HomePage } from './pages/Home/HomePage'
 import { NotFoundPage } from './pages/NotFoundPage/NotFoundPage'
@@ -24,7 +24,7 @@ function App() {
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const navItems = [
-    { label: 'Home', path: '/home' },
+    { label: 'Home', path: '/' },
     { label: 'Fipe', path: '/fipe' },
     { label: 'Estoque', path: '/estoque' },
     { label: 'Dashboard', path: '/dashboard' },
@@ -52,7 +52,7 @@ function App() {
           <Toolbar disableGutters sx={{ minHeight: 72 }}>
             <Typography
               component={Link}
-              to="/home"
+              to="/"
               variant="h6"
               sx={{
                 fontWeight: 700,
@@ -131,8 +131,7 @@ function App() {
 
       <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
         <Routes>
-          <Route path="/" element={<Navigate to="/home" replace />} />
-          <Route path="/home" element={<HomePage />} />
+          <Route path="/" element={<HomePage />} />
           <Route path="/fipe" element={<FipePage />} />
           <Route path="/estoque" element={<NotFoundPage />} />
           <Route path="/dashboard" element={<NotFoundPage />} />
