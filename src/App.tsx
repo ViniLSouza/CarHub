@@ -15,6 +15,7 @@ import {
 import MenuIcon from '@mui/icons-material/Menu'
 import { useState } from 'react'
 import { Link, Route, Routes, useLocation } from 'react-router-dom'
+import { EstoquePage } from './pages/Estoque/EstoquePage'
 import { FipePage } from './pages/Fipe/FipePage'
 import { HomePage } from './pages/Home/HomePage'
 import { NotFoundPage } from './pages/NotFoundPage/NotFoundPage'
@@ -133,7 +134,7 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/fipe" element={<FipePage />} />
-          <Route path="/estoque" element={<NotFoundPage />} />
+          <Route path="/estoque" element={<EstoquePage />} />
           <Route path="/dashboard" element={<NotFoundPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
