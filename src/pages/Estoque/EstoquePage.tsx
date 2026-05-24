@@ -9,19 +9,32 @@ import {
 } from '@mui/material'
 import { useEffect, useMemo, useState } from 'react'
 import {
-  createVehicleApi,
-  deleteVehicleApi,
-  fetchVehicleByIdApi,
-  fetchVehiclesApi,
-  updateVehicleApi,
   type CreateVehiclePayload,
   type StockVehicle,
 } from '../../api/estoqueApi'
 import {
-  fetchBrandsApi,
-  fetchModelsApi,
-  fetchPriceApi,
-  fetchYearsApi,
+  clearStockVehicleMessages,
+  clearStockExpenseMessages,
+  clearSoldStockVehiclesError,
+  clearStockVehiclesError,
+  createStockVehicle,
+  deleteStockVehicle,
+  fetchBrands,
+  fetchModels,
+  fetchPrice,
+  fetchSoldStockVehicles,
+  fetchStockVehicleById,
+  fetchStockVehicles,
+  fetchYears,
+  sellStockVehicle,
+  setStockVehicleError,
+  updateStockVehicle,
+  clearError,
+  clearModelsAndBelow,
+  clearPrice,
+  clearYearsAndPrice,
+} from '../../store'
+import {
   getOptionId,
   getOptionName,
   type ApiOption,
@@ -42,6 +55,10 @@ import { AddVehicleDialog } from './components/AddVehicleDialog'
 import { StockVehiclesTable, type StockCarRow } from './components/StockVehiclesTable'
 import { VehicleDetailsDialog } from './components/VehicleDetailsDialog'
 import { EMPTY_VEHICLE_DETAILS_FORM, type VehicleDetailsForm } from './types'
+import {
+  useAppDispatch,
+  useAppSelector,
+} from '../../store'
 
 function mapVehicleToStockCar(vehicle: StockVehicle): StockCarRow {
   const parsedYear = Number(vehicle.year)
@@ -51,11 +68,18 @@ function mapVehicleToStockCar(vehicle: StockVehicle): StockCarRow {
     brand: vehicle.brand,
     model: vehicle.model,
     year: Number.isFinite(parsedYear) ? parsedYear : new Date().getFullYear(),
+    soldValue: vehicle.soldValue,
+    totalCost: vehicle.totalCost,
+    soldDate: vehicle.soldDate,
+    buyerName: vehicle.buyerName,
+    buyerDocument: vehicle.buyerDocument,
+    buyerPhone: vehicle.buyerPhone,
+    sellerName: vehicle.sellerName,
   }
 }
 
 export function EstoquePage() {
-  const [stockCars, setStockCars] = useState<StockCarRow[]>([])
+  const dispatch = useAppDispatch()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [vehicleType, setVehicleType] = useState<VehicleType>('carros')
   const [brandId, setBrandId] = useState('')
@@ -71,22 +95,8 @@ export function EstoquePage() {
   const [fuel, setFuel] = useState('')
   const [transmission, setTransmission] = useState('')
   const [doors, setDoors] = useState('')
-  const [brands, setBrands] = useState<ApiOption[]>([])
-  const [models, setModels] = useState<ApiOption[]>([])
-  const [years, setYears] = useState<ApiOption[]>([])
-  const [loadingBrands, setLoadingBrands] = useState(false)
-  const [loadingModels, setLoadingModels] = useState(false)
-  const [loadingYears, setLoadingYears] = useState(false)
-  const [loadingPrice, setLoadingPrice] = useState(false)
-  const [loadingStockCars, setLoadingStockCars] = useState(false)
-  const [savingVehicle, setSavingVehicle] = useState(false)
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
-  const [loadingVehicleDetails, setLoadingVehicleDetails] = useState(false)
-  const [updatingVehicleDetails, setUpdatingVehicleDetails] = useState(false)
-  const [deletingVehicleDetails, setDeletingVehicleDetails] = useState(false)
-  const [vehicleDetailsError, setVehicleDetailsError] = useState('')
-  const [vehicleDetailsSuccess, setVehicleDetailsSuccess] = useState('')
-  const [selectedVehicleDetails, setSelectedVehicleDetails] = useState<StockVehicle | null>(null)
+  const [submitError, setSubmitError] = useState('')
   const [vehicleDetailsForm, setVehicleDetailsForm] = useState<VehicleDetailsForm>(
     EMPTY_VEHICLE_DETAILS_FORM,
   )
@@ -101,8 +111,46 @@ export function EstoquePage() {
     message: '',
     severity: 'success',
   })
-  const [stockCarsError, setStockCarsError] = useState('')
-  const [submitError, setSubmitError] = useState('')
+  const {
+    brands,
+    models,
+    years,
+    priceData,
+    loadingBrands,
+    loadingModels,
+    loadingYears,
+    loadingPrice,
+    errorMessage: fipeErrorMessage,
+  } = useAppSelector((state) => state.fipe)
+  const {
+    vehicles,
+    soldVehicles,
+    selectedVehicle,
+    expenses,
+    loadingVehicles,
+    loadingSoldVehicles,
+    loadingVehicle,
+    loadingExpenses,
+    savingVehicle,
+    sellingVehicle,
+    updatingVehicle,
+    deletingVehicle,
+    savingExpense,
+    updatingExpense,
+    deletingExpense,
+    vehiclesError,
+    soldVehiclesError,
+    vehicleError,
+    vehicleSuccess,
+    expensesError,
+    expensesSuccess,
+  } = useAppSelector((state) => state.stock)
+
+  const stockCars = useMemo(() => vehicles.map(mapVehicleToStockCar), [vehicles])
+  const soldStockCars = useMemo(() => soldVehicles.map(mapVehicleToStockCar), [soldVehicles])
+  const selectedVehicleDetails = selectedVehicle
+  const isVehicleBusy = loadingVehicle || updatingVehicle || deletingVehicle
+  const isExpenseBusy = loadingExpenses || savingExpense || updatingExpense || deletingExpense
 
   const openApiResponseDialog = (title: string, message: string, severity: 'success' | 'error') => {
     setApiResponseDialog({ open: true, title, message, severity })
@@ -111,6 +159,76 @@ export function EstoquePage() {
   const closeApiResponseDialog = () => {
     setApiResponseDialog((prev) => ({ ...prev, open: false }))
   }
+
+  useEffect(() => {
+    if (!vehiclesError) {
+      return
+    }
+
+    const timerId = window.setTimeout(() => {
+      dispatch(clearStockVehiclesError())
+    }, 3000)
+
+    return () => {
+      window.clearTimeout(timerId)
+    }
+  }, [dispatch, vehiclesError])
+
+  useEffect(() => {
+    if (!soldVehiclesError) {
+      return
+    }
+
+    const timerId = window.setTimeout(() => {
+      dispatch(clearSoldStockVehiclesError())
+    }, 3000)
+
+    return () => {
+      window.clearTimeout(timerId)
+    }
+  }, [dispatch, soldVehiclesError])
+
+  useEffect(() => {
+    if (!vehicleError && !vehicleSuccess) {
+      return
+    }
+
+    const timerId = window.setTimeout(() => {
+      dispatch(clearStockVehicleMessages())
+    }, 3000)
+
+    return () => {
+      window.clearTimeout(timerId)
+    }
+  }, [dispatch, vehicleError, vehicleSuccess])
+
+  useEffect(() => {
+    if (!expensesError && !expensesSuccess) {
+      return
+    }
+
+    const timerId = window.setTimeout(() => {
+      dispatch(clearStockExpenseMessages())
+    }, 3000)
+
+    return () => {
+      window.clearTimeout(timerId)
+    }
+  }, [dispatch, expensesError, expensesSuccess])
+
+  useEffect(() => {
+    if (!fipeErrorMessage) {
+      return
+    }
+
+    const timerId = window.setTimeout(() => {
+      dispatch(clearError())
+    }, 3000)
+
+    return () => {
+      window.clearTimeout(timerId)
+    }
+  }, [dispatch, fipeErrorMessage])
 
   const selectedBrandName = useMemo(
     () => {
@@ -128,187 +246,78 @@ export function EstoquePage() {
     [models, modelId],
   )
 
-  const loadStockCars = async () => {
-    setLoadingStockCars(true)
-    setStockCarsError('')
-
-    try {
-      const vehicles = await fetchVehiclesApi()
-      setStockCars(vehicles.map(mapVehicleToStockCar))
-    } catch {
-      setStockCarsError('Nao foi possivel carregar os veiculos cadastrados no estoque.')
-      setStockCars([])
-    } finally {
-      setLoadingStockCars(false)
-    }
-  }
-
   useEffect(() => {
-    void loadStockCars()
-  }, [])
+    void dispatch(fetchStockVehicles())
+    void dispatch(fetchSoldStockVehicles())
+  }, [dispatch])
 
   const clearDependentFieldsFromType = () => {
     setBrandId('')
     setModelId('')
     setYearId('')
-    setModels([])
-    setYears([])
+    dispatch(clearModelsAndBelow())
     setFipeDisplay('')
   }
 
   const clearDependentFieldsFromBrand = () => {
     setModelId('')
     setYearId('')
-    setYears([])
+    dispatch(clearYearsAndPrice())
     setFipeDisplay('')
   }
 
   const clearDependentFieldsFromModel = () => {
     setYearId('')
+    dispatch(clearPrice())
     setFipeDisplay('')
   }
 
   useEffect(() => {
-    let isActive = true
-
-    const run = async () => {
-      setLoadingBrands(true)
-
-      try {
-        const data = await fetchBrandsApi(vehicleType)
-
-        if (isActive) {
-          setBrands(data)
-        }
-      } catch {
-        if (isActive) {
-          setBrands([])
-        }
-      } finally {
-        if (isActive) {
-          setLoadingBrands(false)
-        }
-      }
-    }
-
-    run()
-
-    return () => {
-      isActive = false
-    }
-  }, [vehicleType])
+    void dispatch(fetchBrands(vehicleType))
+  }, [dispatch, vehicleType])
 
   useEffect(() => {
     if (!brandId) {
       return
     }
 
-    let isActive = true
-
-    const run = async () => {
-      setLoadingModels(true)
-
-      try {
-        const data = await fetchModelsApi(vehicleType, brandId)
-
-        if (isActive) {
-          setModels(data)
-        }
-      } catch {
-        if (isActive) {
-          setModels([])
-        }
-      } finally {
-        if (isActive) {
-          setLoadingModels(false)
-        }
-      }
-    }
-
-    run()
-
-    return () => {
-      isActive = false
-    }
-  }, [vehicleType, brandId])
+    void dispatch(fetchModels({ vehicleType, brandId }))
+  }, [dispatch, vehicleType, brandId])
 
   useEffect(() => {
     if (!brandId || !modelId) {
       return
     }
 
-    let isActive = true
-
-    const run = async () => {
-      setLoadingYears(true)
-
-      try {
-        const data = await fetchYearsApi(vehicleType, brandId, modelId)
-
-        if (isActive) {
-          setYears(data)
-        }
-      } catch {
-        if (isActive) {
-          setYears([])
-        }
-      } finally {
-        if (isActive) {
-          setLoadingYears(false)
-        }
-      }
-    }
-
-    run()
-
-    return () => {
-      isActive = false
-    }
-  }, [vehicleType, brandId, modelId])
+    void dispatch(fetchYears({ vehicleType, brandId, modelId }))
+  }, [dispatch, vehicleType, brandId, modelId])
 
   useEffect(() => {
     if (!brandId || !modelId || !yearId) {
       return
     }
 
-    let isActive = true
+    void dispatch(fetchPrice({ vehicleType, brandId, modelId, yearId }))
+  }, [dispatch, vehicleType, brandId, modelId, yearId])
 
-    const run = async () => {
-      setLoadingPrice(true)
+  useEffect(() => {
+    const priceText = priceData?.price
 
-      try {
-        const data = await fetchPriceApi(vehicleType, brandId, modelId, yearId)
-
-        if (isActive) {
-          const numberValue = parseApiPriceToNumber(data.price)
-          setFipeDisplay(numberValue ? formatCurrencyDisplay(numberValue) : '')
-        }
-      } catch {
-        if (isActive) {
-          setFipeDisplay('')
-        }
-      } finally {
-        if (isActive) {
-          setLoadingPrice(false)
-        }
-      }
+    if (!priceText) {
+      setFipeDisplay('')
+      return
     }
 
-    run()
-
-    return () => {
-      isActive = false
-    }
-  }, [vehicleType, brandId, modelId, yearId])
+    const parsedPrice = parseApiPriceToNumber(priceText)
+    setFipeDisplay(parsedPrice > 0 ? formatCurrencyDisplay(parsedPrice) : '')
+  }, [priceData?.price])
 
   const handleOpenModal = () => {
     setIsModalOpen(true)
-    setSubmitError('')
   }
 
   const handleCloseModal = () => {
     setIsModalOpen(false)
-    setSubmitError('')
     setVehicleType('carros')
     setBrandId('')
     setModelId('')
@@ -323,39 +332,24 @@ export function EstoquePage() {
     setFuel('')
     setTransmission('')
     setDoors('')
-    setModels([])
-    setYears([])
   }
 
   const handleCloseDetailsModal = () => {
     setIsDetailsModalOpen(false)
-    setLoadingVehicleDetails(false)
-    setUpdatingVehicleDetails(false)
-    setDeletingVehicleDetails(false)
-    setVehicleDetailsError('')
-    setVehicleDetailsSuccess('')
-    setSelectedVehicleDetails(null)
     setVehicleDetailsForm(EMPTY_VEHICLE_DETAILS_FORM)
+    dispatch(clearStockVehicleMessages())
+    dispatch(clearStockExpenseMessages())
   }
 
   const handleOpenDetails = async (vehicleId: number) => {
     setIsDetailsModalOpen(true)
-    setLoadingVehicleDetails(true)
-    setVehicleDetailsError('')
-    setVehicleDetailsSuccess('')
-    setSelectedVehicleDetails(null)
     setVehicleDetailsForm(EMPTY_VEHICLE_DETAILS_FORM)
 
     try {
-      const vehicle = await fetchVehicleByIdApi(vehicleId)
-      setSelectedVehicleDetails(vehicle)
+      const vehicle = await dispatch(fetchStockVehicleById(vehicleId)).unwrap()
       setVehicleDetailsForm(mapVehicleToDetailsForm(vehicle))
-    } catch (error) {
-      setVehicleDetailsError(
-        error instanceof Error ? error.message : 'Nao foi possivel carregar os detalhes do veiculo.',
-      )
-    } finally {
-      setLoadingVehicleDetails(false)
+    } catch {
+      // The reducer stores the error state.
     }
   }
 
@@ -390,8 +384,7 @@ export function EstoquePage() {
       !Number.isFinite(paidValue) ||
       paidValue <= 0
     ) {
-      setVehicleDetailsError('Preencha todos os campos corretamente para atualizar o veiculo.')
-      setVehicleDetailsSuccess('')
+      dispatch(setStockVehicleError('Preencha todos os campos corretamente para atualizar o veiculo.'))
       return
     }
 
@@ -412,24 +405,16 @@ export function EstoquePage() {
       purchaseDate,
     }
 
-    setUpdatingVehicleDetails(true)
-    setVehicleDetailsError('')
-    setVehicleDetailsSuccess('')
-
     try {
-      const updatedVehicle = await updateVehicleApi(selectedVehicleDetails.id, payload)
-      setSelectedVehicleDetails(updatedVehicle)
+      const updatedVehicle = await dispatch(
+        updateStockVehicle({ id: selectedVehicleDetails.id, payload }),
+      ).unwrap()
       setVehicleDetailsForm(mapVehicleToDetailsForm(updatedVehicle))
-      setVehicleDetailsSuccess('')
       openApiResponseDialog('Atualizacao concluida', 'Veiculo atualizado com sucesso.', 'success')
-      await loadStockCars()
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Nao foi possivel atualizar o veiculo.'
-      setVehicleDetailsError('')
       openApiResponseDialog('Falha na atualizacao', errorMessage, 'error')
-    } finally {
-      setUpdatingVehicleDetails(false)
     }
   }
 
@@ -438,22 +423,50 @@ export function EstoquePage() {
       return
     }
 
-    setDeletingVehicleDetails(true)
-    setVehicleDetailsError('')
-    setVehicleDetailsSuccess('')
-
     try {
-      await deleteVehicleApi(selectedVehicleDetails.id)
-      await loadStockCars()
+      await dispatch(deleteStockVehicle(selectedVehicleDetails.id)).unwrap()
       handleCloseDetailsModal()
       openApiResponseDialog('Exclusao concluida', 'Veiculo excluido com sucesso.', 'success')
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Nao foi possivel excluir o veiculo.'
-      setVehicleDetailsError('')
       openApiResponseDialog('Falha na exclusao', errorMessage, 'error')
-    } finally {
-      setDeletingVehicleDetails(false)
+    }
+  }
+
+  const handleSellVehicleDetails = async (payload: {
+    valorVendido: number
+    dataVenda: string
+    nomeComprador: string
+    documentoComprador: string
+    telefoneComprador: string
+    nomeVendedor: string
+  }) => {
+    if (!selectedVehicleDetails) {
+      return
+    }
+
+    if (
+      !Number.isFinite(payload.valorVendido) ||
+      payload.valorVendido <= 0 ||
+      !payload.dataVenda ||
+      !payload.nomeComprador ||
+      !payload.documentoComprador ||
+      !payload.telefoneComprador ||
+      !payload.nomeVendedor
+    ) {
+      dispatch(setStockVehicleError('Preencha corretamente todos os dados da venda.'))
+      return
+    }
+
+    try {
+      await dispatch(sellStockVehicle({ id: selectedVehicleDetails.id, payload })).unwrap()
+      handleCloseDetailsModal()
+      openApiResponseDialog('Venda concluida', 'Veiculo marcado como vendido com sucesso.', 'success')
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Nao foi possivel concluir a venda. Tente novamente.'
+      openApiResponseDialog('Falha na venda', errorMessage, 'error')
     }
   }
 
@@ -507,29 +520,14 @@ export function EstoquePage() {
       purchaseDate,
     }
 
-    setSavingVehicle(true)
-
     try {
-      const createdVehicle = await createVehicleApi(payload)
-
-      setStockCars((prev) => [
-        {
-          id: createdVehicle.id,
-          brand: createdVehicle.brand,
-          model: createdVehicle.model,
-          year: Number(createdVehicle.year) || new Date().getFullYear(),
-        },
-        ...prev,
-      ])
+      const createdVehicle = await dispatch(createStockVehicle(payload)).unwrap()
 
       handleCloseModal()
       openApiResponseDialog('Cadastro concluido', 'Veiculo cadastrado com sucesso.', 'success')
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Nao foi possivel salvar o veiculo.'
-      setSubmitError('')
       openApiResponseDialog('Falha no cadastro', errorMessage, 'error')
-    } finally {
-      setSavingVehicle(false)
     }
   }
 
@@ -539,7 +537,7 @@ export function EstoquePage() {
         chip={
           <Chip
             icon={<Inventory2RoundedIcon />}
-            label="Gestão de estoque"
+            label="Gestão de estoque e vendas"
             sx={{
               width: 'fit-content',
               fontWeight: 700,
@@ -552,15 +550,15 @@ export function EstoquePage() {
         }
         title={
           <Typography variant="h4" sx={{ fontWeight: 800, color: '#fff', lineHeight: 1.25 }}>
-            Veículos{' '}
+            Estoque, venda e{' '}
             <Box component="span" sx={{ color: '#38bdf8' }}>
-              disponíveis no pátio
+              resultado por veículo
             </Box>
           </Typography>
         }
         description={
           <Typography sx={{ color: 'rgba(255,255,255,0.7)', mt: 0.75, lineHeight: 1.6 }}>
-            Visualize, edite e gerencie os veículos cadastrados no estoque.
+            Cadastre, acompanhe gastos, registre vendas e compare custo total com lucro em um só lugar.
           </Typography>
         }
         sideContent={
@@ -577,15 +575,28 @@ export function EstoquePage() {
               '&:hover': { bgcolor: '#0ea5e9', boxShadow: '0 4px 16px rgba(56,189,248,0.45)' },
             }}
           >
-            Adicionar veículo
+            Cadastrar veículo
           </Button>
         }
       />
 
       <StockVehiclesTable
         rows={stockCars}
-        loading={loadingStockCars}
-        errorMessage={stockCarsError}
+        loading={loadingVehicles}
+        errorMessage={vehiclesError}
+        onOpenDetails={(vehicleId) => {
+          void handleOpenDetails(vehicleId)
+        }}
+      />
+
+      <StockVehiclesTable
+        rows={soldStockCars}
+        loading={loadingSoldVehicles}
+        errorMessage={soldVehiclesError}
+        title="Veículos vendidos e resultado"
+        loadingLabel="Carregando vendidos, custo total e lucro..."
+        emptyLabel="Nenhum veículo vendido até o momento para análise de resultado."
+        showSaleData
         onOpenDetails={(vehicleId) => {
           void handleOpenDetails(vehicleId)
         }}
@@ -594,6 +605,9 @@ export function EstoquePage() {
       <AddVehicleDialog
         open={isModalOpen}
         onClose={handleCloseModal}
+        onClearSubmitError={() => {
+          setSubmitError('')
+        }}
         vehicleType={vehicleType}
         brandId={brandId}
         modelId={modelId}
@@ -615,7 +629,7 @@ export function EstoquePage() {
         fuel={fuel}
         transmission={transmission}
         doors={doors}
-        submitError={submitError}
+        submitError={submitError || vehicleError}
         savingVehicle={savingVehicle}
         onVehicleTypeChange={(value) => {
           setVehicleType(value)
@@ -647,11 +661,12 @@ export function EstoquePage() {
       <VehicleDetailsDialog
         open={isDetailsModalOpen}
         onClose={handleCloseDetailsModal}
-        loadingVehicleDetails={loadingVehicleDetails}
-        updatingVehicleDetails={updatingVehicleDetails}
-        deletingVehicleDetails={deletingVehicleDetails}
-        vehicleDetailsError={vehicleDetailsError}
-        vehicleDetailsSuccess={vehicleDetailsSuccess}
+        loadingVehicleDetails={loadingVehicle}
+        updatingVehicleDetails={updatingVehicle}
+        deletingVehicleDetails={deletingVehicle}
+        sellingVehicleDetails={sellingVehicle}
+        vehicleDetailsError={vehicleError}
+        vehicleDetailsSuccess={vehicleSuccess}
         selectedVehicleDetails={selectedVehicleDetails}
         vehicleDetailsForm={vehicleDetailsForm}
         setVehicleDetailsForm={setVehicleDetailsForm}
@@ -660,6 +675,9 @@ export function EstoquePage() {
         }}
         onUpdate={() => {
           void handleUpdateVehicleDetails()
+        }}
+        onSell={(payload) => {
+          void handleSellVehicleDetails(payload)
         }}
       />
 

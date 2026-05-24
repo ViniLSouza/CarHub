@@ -1,6 +1,7 @@
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import ErrorRoundedIcon from '@mui/icons-material/ErrorRounded'
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography } from '@mui/material'
+import { useEffect } from 'react'
 
 type ApiResponseDialogProps = {
   open: boolean
@@ -18,6 +19,18 @@ export function ApiResponseDialog({
   onClose,
 }: ApiResponseDialogProps) {
   const isSuccess = severity === 'success'
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    const timerId = window.setTimeout(onClose, 3000)
+
+    return () => {
+      window.clearTimeout(timerId)
+    }
+  }, [open, onClose])
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs" aria-labelledby="api-response-title">

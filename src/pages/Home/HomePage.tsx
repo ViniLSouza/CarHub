@@ -132,7 +132,7 @@ export function HomePage() {
                 elevation={0}
                 sx={{
                   height: '100%',
-                  borderRadius: 4,
+                  borderRadius: 2,
                   border: '1px solid rgba(20,40,80,0.10)',
                   p: 3,
                   transition: 'transform 0.2s, box-shadow 0.2s',
@@ -180,7 +180,7 @@ export function HomePage() {
             sx={{
               display: 'block',
               textDecoration: 'none',
-              borderRadius: 4,
+              borderRadius: 2,
               border: '1px solid rgba(29,79,145,0.15)',
               p: 2.5,
               background: 'linear-gradient(135deg, rgba(29,79,145,0.06) 0%, #fff 100%)',
@@ -213,7 +213,7 @@ export function HomePage() {
             sx={{
               display: 'block',
               textDecoration: 'none',
-              borderRadius: 4,
+              borderRadius: 2,
               border: '1px solid rgba(2,132,199,0.15)',
               p: 2.5,
               background: 'linear-gradient(135deg, rgba(2,132,199,0.06) 0%, #fff 100%)',
@@ -243,7 +243,7 @@ export function HomePage() {
       <Paper
         elevation={0}
         sx={{
-          borderRadius: 4,
+          borderRadius: 2,
           border: '1px solid rgba(20,40,80,0.08)',
           p: { xs: 2, md: 2.5 },
           background: '#fff',

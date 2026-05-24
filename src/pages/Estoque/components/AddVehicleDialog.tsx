@@ -12,6 +12,7 @@ import {
 } from '@mui/material'
 import DirectionsCarRoundedIcon from '@mui/icons-material/DirectionsCarRounded'
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded'
+import { useEffect } from 'react'
 import type { ApiOption, VehicleType } from '../../../api/fipeApi'
 import { DialogTitleWithIcon } from '../../../components/DialogTitleWithIcon'
 import { FipeSelectors } from '../../../components/FipeSelectors'
@@ -22,6 +23,7 @@ import { doorOptions, fuelOptions, transmissionOptions } from '../../../shared/c
 type AddVehicleDialogProps = {
   open: boolean
   onClose: () => void
+  onClearSubmitError: () => void
   vehicleType: VehicleType
   brandId: string
   modelId: string
@@ -64,6 +66,7 @@ type AddVehicleDialogProps = {
 export function AddVehicleDialog({
   open,
   onClose,
+  onClearSubmitError,
   vehicleType,
   brandId,
   modelId,
@@ -102,6 +105,20 @@ export function AddVehicleDialog({
   onDoorsChange,
   onSubmit,
 }: AddVehicleDialogProps) {
+  useEffect(() => {
+    if (!submitError) {
+      return
+    }
+
+    const timerId = window.setTimeout(() => {
+      onClearSubmitError()
+    }, 3000)
+
+    return () => {
+      window.clearTimeout(timerId)
+    }
+  }, [onClearSubmitError, submitError])
+
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="md" aria-labelledby="add-car-dialog-title">
       <DialogTitleWithIcon

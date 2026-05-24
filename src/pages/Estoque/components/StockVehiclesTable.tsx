@@ -17,12 +17,20 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
+import { formatCurrencyDisplay, toDisplayDate } from '../../../shared/utils/formatters'
 
 export type StockCarRow = {
   id: number
   brand: string
   model: string
   year: number
+  soldValue?: number
+  totalCost?: number
+  soldDate?: string
+  buyerName?: string
+  buyerDocument?: string
+  buyerPhone?: string
+  sellerName?: string
 }
 
 type StockVehiclesTableProps = {
@@ -30,14 +38,29 @@ type StockVehiclesTableProps = {
   loading: boolean
   errorMessage: string
   onOpenDetails: (vehicleId: number) => void
+  title?: string
+  loadingLabel?: string
+  emptyLabel?: string
+  showSaleData?: boolean
 }
 
-export function StockVehiclesTable({ rows, loading, errorMessage, onOpenDetails }: StockVehiclesTableProps) {
+export function StockVehiclesTable({
+  rows,
+  loading,
+  errorMessage,
+  onOpenDetails,
+  title = 'Veículos em estoque',
+  loadingLabel = 'Carregando veículos do estoque...',
+  emptyLabel = 'Nenhum veículo disponível no estoque.',
+  showSaleData = false,
+}: StockVehiclesTableProps) {
+  const columnCount = showSaleData ? 12 : 4
+
   return (
     <Paper
       elevation={1}
       sx={{
-        borderRadius: 4,
+        borderRadius: 2,
         border: '1px solid rgba(20,40,80,0.08)',
         overflow: 'hidden',
       }}
@@ -71,12 +94,12 @@ export function StockVehiclesTable({ rows, loading, errorMessage, onOpenDetails 
             <DirectionsCarRoundedIcon fontSize="small" />
           </Box>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'text.primary' }}>
-            Veículos no estoque
+            {title}
           </Typography>
         </Box>
         {!loading && !errorMessage && (
           <Chip
-            label={`${rows.length} veículo${rows.length !== 1 ? 's' : ''}`}
+            label={`${rows.length} registro${rows.length !== 1 ? 's' : ''}`}
             size="small"
             sx={{ bgcolor: 'rgba(29,79,145,0.08)', color: 'primary.main', fontWeight: 600 }}
           />
@@ -94,7 +117,7 @@ export function StockVehiclesTable({ rows, loading, errorMessage, onOpenDetails 
       )}
 
       <TableContainer>
-        <Table aria-label="Tabela de veículos em estoque">
+        <Table aria-label={showSaleData ? 'Tabela de veículos vendidos e resultado' : 'Tabela de veículos em estoque'}>
           <TableHead>
             <TableRow
               sx={{
@@ -113,6 +136,14 @@ export function StockVehiclesTable({ rows, loading, errorMessage, onOpenDetails 
               <TableCell>Marca</TableCell>
               <TableCell>Modelo</TableCell>
               <TableCell align="center">Ano</TableCell>
+              {showSaleData && <TableCell align="right">Valor vendido</TableCell>}
+              {showSaleData && <TableCell align="right">Custo total</TableCell>}
+              {showSaleData && <TableCell align="right">Lucro</TableCell>}
+              {showSaleData && <TableCell>Data da venda</TableCell>}
+              {showSaleData && <TableCell>Comprador</TableCell>}
+              {showSaleData && <TableCell>Documento</TableCell>}
+              {showSaleData && <TableCell>Telefone</TableCell>}
+              {showSaleData && <TableCell>Vendedor</TableCell>}
               <TableCell align="right">Ações</TableCell>
             </TableRow>
           </TableHead>
@@ -120,11 +151,11 @@ export function StockVehiclesTable({ rows, loading, errorMessage, onOpenDetails 
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={4} sx={{ py: 6 }}>
+                <TableCell colSpan={columnCount} sx={{ py: 6 }}>
                   <Stack sx={{ alignItems: 'center' }} spacing={1.5}>
                     <CircularProgress size={28} />
                     <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                      Carregando veículos...
+                      {loadingLabel}
                     </Typography>
                   </Stack>
                 </TableCell>
@@ -137,7 +168,11 @@ export function StockVehiclesTable({ rows, loading, errorMessage, onOpenDetails 
                   sx={{
                     cursor: 'pointer',
                     transition: 'background 0.15s',
-                    '& .MuiTableCell-root': { borderBottomColor: 'rgba(20,40,80,0.07)', py: 1.5 },
+                    '& .MuiTableCell-root': {
+                      borderBottomColor: 'rgba(20,40,80,0.07)',
+                      py: 1.5,
+                      whiteSpace: 'nowrap',
+                    },
                     '&:hover': { bgcolor: 'rgba(29,79,145,0.03)' },
                     '&:last-child .MuiTableCell-root': { borderBottom: 0 },
                   }}
@@ -164,6 +199,75 @@ export function StockVehiclesTable({ rows, loading, errorMessage, onOpenDetails 
                       }}
                     />
                   </TableCell>
+                  {showSaleData && (
+                    <TableCell align="right">
+                      <Typography variant="body2" sx={{ fontWeight: 700, color: 'success.main' }}>
+                        {car.soldValue ? formatCurrencyDisplay(car.soldValue) : '-'}
+                      </Typography>
+                    </TableCell>
+                  )}
+                  {showSaleData && (
+                    <TableCell align="right">
+                      <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+                        {car.totalCost ? formatCurrencyDisplay(car.totalCost) : '-'}
+                      </Typography>
+                    </TableCell>
+                  )}
+                  {showSaleData && (
+                    <TableCell align="right">
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 700,
+                          color:
+                            typeof car.soldValue === 'number' && typeof car.totalCost === 'number'
+                              ? car.soldValue - car.totalCost >= 0
+                                ? 'success.main'
+                                : 'error.main'
+                              : 'text.secondary',
+                        }}
+                      >
+                        {typeof car.soldValue === 'number' && typeof car.totalCost === 'number'
+                          ? formatCurrencyDisplay(car.soldValue - car.totalCost)
+                          : '-'}
+                      </Typography>
+                    </TableCell>
+                  )}
+                  {showSaleData && (
+                    <TableCell>
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                        {car.soldDate ? toDisplayDate(car.soldDate) : '-'}
+                      </Typography>
+                    </TableCell>
+                  )}
+                  {showSaleData && (
+                    <TableCell>
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                        {car.buyerName ?? '-'}
+                      </Typography>
+                    </TableCell>
+                  )}
+                  {showSaleData && (
+                    <TableCell>
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                        {car.buyerDocument ?? '-'}
+                      </Typography>
+                    </TableCell>
+                  )}
+                  {showSaleData && (
+                    <TableCell>
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                        {car.buyerPhone ?? '-'}
+                      </Typography>
+                    </TableCell>
+                  )}
+                  {showSaleData && (
+                    <TableCell>
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                        {car.sellerName ?? '-'}
+                      </Typography>
+                    </TableCell>
+                  )}
                   <TableCell align="right">
                     <Button
                       size="small"
@@ -179,11 +283,11 @@ export function StockVehiclesTable({ rows, loading, errorMessage, onOpenDetails 
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={4} sx={{ py: 6, borderBottom: 0 }}>
+                <TableCell colSpan={columnCount} sx={{ py: 6, borderBottom: 0 }}>
                   <Stack sx={{ alignItems: 'center' }} spacing={1}>
                     <DirectionsCarRoundedIcon sx={{ fontSize: 40, color: 'rgba(20,40,80,0.2)' }} />
                     <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                      Nenhum veículo cadastrado no estoque.
+                      {emptyLabel}
                     </Typography>
                   </Stack>
                 </TableCell>

@@ -43,7 +43,7 @@ export function FipeFiltersCard({
     <Paper
       elevation={1}
       sx={{
-        borderRadius: 4,
+        borderRadius: 2,
         border: '1px solid rgba(20,40,80,0.08)',
         p: { xs: 2.5, md: 3.5 },
         background: '#ffffff',

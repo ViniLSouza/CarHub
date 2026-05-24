@@ -53,6 +53,20 @@ export function FipePage() {
   }, [models, modelId])
 
   useEffect(() => {
+    if (!errorMessage) {
+      return
+    }
+
+    const timerId = window.setTimeout(() => {
+      dispatch(clearError())
+    }, 3000)
+
+    return () => {
+      window.clearTimeout(timerId)
+    }
+  }, [dispatch, errorMessage])
+
+  useEffect(() => {
     dispatch(fetchBrands(vehicleType))
   }, [dispatch, vehicleType])
 

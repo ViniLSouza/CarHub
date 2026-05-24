@@ -29,7 +29,7 @@ export function NotFoundPage() {
           width: '100%',
           maxWidth: 760,
           p: { xs: 3, md: 5 },
-          borderRadius: 4,
+          borderRadius: 2,
           border: '1px solid',
           borderColor: 'rgba(20, 40, 80, 0.12)',
           background:

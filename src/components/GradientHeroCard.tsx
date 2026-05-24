@@ -28,7 +28,7 @@ export function GradientHeroCard({
     <Paper
       elevation={0}
       sx={{
-        borderRadius: 4,
+        borderRadius: 2,
         border: '1px solid rgba(29,79,145,0.12)',
         p: { xs: 3, md: 4 },
         background: 'linear-gradient(135deg, #0d1b2a 0%, #1a2f50 60%, #1d4f91 100%)',

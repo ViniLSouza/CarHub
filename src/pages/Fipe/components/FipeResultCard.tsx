@@ -59,7 +59,7 @@ export function FipeResultCard({
     <Paper
       elevation={1}
       sx={{
-        borderRadius: 4,
+        borderRadius: 2,
         border: '1px solid rgba(22,163,74,0.2)',
         p: { xs: 2.5, md: 3.5 },
         background: 'linear-gradient(135deg, rgba(22,163,74,0.04) 0%, #fff 60%)',
