@@ -1,3 +1,5 @@
+import { requestJson } from './httpClient'
+
 export type VehicleType = 'carros' | 'motos' | 'caminhoes'
 
 export type ApiOption = {
@@ -20,18 +22,6 @@ export type PriceResult = {
   referenceMonth?: string
   fuelAcronym?: string
   [key: string]: unknown
-}
-
-const API_BASE = import.meta.env.VITE_FIPE_API_URL ?? 'http://localhost:3000'
-
-async function requestJson<T>(path: string): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`)
-
-  if (!response.ok) {
-    throw new Error(`Falha na requisicao: ${response.status}`)
-  }
-
-  return (await response.json()) as T
 }
 
 export function getOptionId(option: ApiOption): string {

@@ -1,7 +1,6 @@
 import { Stack } from '@mui/material'
-import type { SelectChangeEvent } from '@mui/material/Select'
 import { useEffect, useMemo, useState } from 'react'
-import { getOptionId, type VehicleType } from '../../api/fipeApi'
+import { getOptionId, getOptionName, type VehicleType } from '../../api/fipeApi'
 import {
   FipeFeedback,
   FipeFiltersCard,
@@ -44,11 +43,13 @@ export function FipePage() {
   const isLoadingAny = loadingBrands || loadingModels || loadingYears || loadingPrice
 
   const selectedBrandName = useMemo(() => {
-    return brands.find((item) => getOptionId(item) === brandId)?.name ?? '-'
+    const found = brands.find((item) => getOptionId(item) === brandId)
+    return found ? getOptionName(found) : '-'
   }, [brands, brandId])
 
   const selectedModelName = useMemo(() => {
-    return models.find((item) => getOptionId(item) === modelId)?.name ?? '-'
+    const found = models.find((item) => getOptionId(item) === modelId)
+    return found ? getOptionName(found) : '-'
   }, [models, modelId])
 
   useEffect(() => {
@@ -79,13 +80,13 @@ export function FipePage() {
     dispatch(fetchPrice({ vehicleType, brandId, modelId, yearId }))
   }, [dispatch, vehicleType, brandId, modelId, yearId])
 
-  const handleVehicleTypeChange = (event: SelectChangeEvent<VehicleType>) => {
+  const handleVehicleTypeChange = (nextVehicleType: VehicleType) => {
     dispatch(clearError())
     dispatch(clearModelsAndBelow())
     setBrandId('')
     setModelId('')
     setYearId('')
-    setVehicleType(event.target.value as VehicleType)
+    setVehicleType(nextVehicleType)
   }
 
   const handleBrandChange = (value: string) => {

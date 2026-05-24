@@ -75,7 +75,7 @@ export function NotFoundPage() {
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
             <Button
               component={Link}
-              to="/home"
+              to="/"
               variant="contained"
               startIcon={<HomeRoundedIcon />}
               sx={{
@@ -84,8 +84,8 @@ export function NotFoundPage() {
                 borderRadius: 999,
                 textTransform: 'none',
                 fontWeight: 700,
-                bgcolor: '#183a67',
-                '&:hover': { bgcolor: '#102b4c' },
+                bgcolor: '#1d4f91',
+                '&:hover': { bgcolor: '#153f75' },
               }}
             >
               Voltar para Home

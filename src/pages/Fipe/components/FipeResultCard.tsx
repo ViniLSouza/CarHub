@@ -30,23 +30,23 @@ export function FipeResultCard({
       <Stack spacing={1.25}>
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
           <SearchRoundedIcon sx={{ color: '#1d4f91' }} />
-          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, color: '#13233e' }}>
             Resultado da consulta
           </Typography>
         </Box>
-        <Typography>
+        <Typography sx={{ color: '#1f2f4a' }}>
           <strong>Marca:</strong> {priceData.brand ?? selectedBrandName}
         </Typography>
-        <Typography>
+        <Typography sx={{ color: '#1f2f4a' }}>
           <strong>Modelo:</strong> {priceData.model ?? selectedModelName}
         </Typography>
-        <Typography>
+        <Typography sx={{ color: '#1f2f4a' }}>
           <strong>Ano:</strong> {priceData.modelYear ?? priceData.year ?? yearId}
         </Typography>
-        <Typography>
+        <Typography sx={{ color: '#1f2f4a' }}>
           <strong>Combustivel:</strong> {priceData.fuel ?? 'Nao informado'}
         </Typography>
-        <Typography>
+        <Typography sx={{ color: '#1f2f4a' }}>
           <strong>Codigo FIPE:</strong> {priceData.codeFipe ?? 'Nao informado'}
         </Typography>
         <Typography sx={{ fontWeight: 700, color: '#0f3464' }}>
