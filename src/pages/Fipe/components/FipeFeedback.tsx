@@ -1,4 +1,5 @@
 import { Alert, Box, CircularProgress, Typography } from '@mui/material'
+import HourglassTopRoundedIcon from '@mui/icons-material/HourglassTopRounded'
 
 type FipeFeedbackProps = {
   isLoadingAny: boolean
@@ -16,22 +17,25 @@ export function FipeFeedback({ isLoadingAny, errorMessage }: FipeFeedbackProps) 
         <Box
           sx={{
             display: 'flex',
-            gap: 1,
+            gap: 1.5,
             alignItems: 'center',
-            color: '#4a5b78',
-            bgcolor: 'rgba(29, 79, 145, 0.06)',
-            borderRadius: 2,
-            px: 1.5,
-            py: 1,
+            bgcolor: 'rgba(29,79,145,0.06)',
+            border: '1px solid rgba(29,79,145,0.14)',
+            borderRadius: 3,
+            px: 2,
+            py: 1.25,
           }}
         >
-          <CircularProgress size={20} />
-          <Typography>Carregando dados...</Typography>
+          <CircularProgress size={18} sx={{ color: 'primary.main' }} />
+          <HourglassTopRoundedIcon sx={{ color: 'primary.main', fontSize: 18 }} />
+          <Typography variant="body2" sx={{ fontWeight: 500, color: 'primary.main' }}>
+            Buscando dados na tabela FIPE...
+          </Typography>
         </Box>
       )}
 
       {errorMessage && (
-        <Alert severity="error" sx={{ borderRadius: 2 }}>
+        <Alert severity="error" sx={{ borderRadius: 3 }}>
           {errorMessage}
         </Alert>
       )}

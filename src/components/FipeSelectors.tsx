@@ -1,5 +1,6 @@
-import { FormControl, InputLabel, MenuItem, Select, Stack } from '@mui/material'
+import { Grid } from '@mui/material'
 import { getOptionId, getOptionName, type ApiOption, type VehicleType } from '../api/fipeApi'
+import { SelectField } from './SelectField'
 import { vehicleTypeOptions } from '../shared/constants/vehicle'
 
 type FipeSelectorsProps = {
@@ -43,70 +44,58 @@ export function FipeSelectors({
   const yearLabelId = `${idPrefix}-year-label`
 
   return (
-    <Stack spacing={2}>
-      <FormControl fullWidth>
-        <InputLabel id={vehicleTypeLabelId}>Tipo</InputLabel>
-        <Select
+    <Grid container spacing={2}>
+      <Grid size={{ xs: 12, sm: 6 }}>
+        <SelectField
+          label="Tipo de veículo"
           labelId={vehicleTypeLabelId}
-          label="Tipo"
           value={vehicleType}
-          onChange={(event) => onVehicleTypeChange(event.target.value as VehicleType)}
-        >
-          {vehicleTypeOptions.map((option) => (
-            <MenuItem key={option.value} value={option.value}>
-              {option.label}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+          options={vehicleTypeOptions}
+          onChange={(value) => onVehicleTypeChange(value as VehicleType)}
+        />
+      </Grid>
 
-      <FormControl fullWidth disabled={!brands.length || loadingBrands}>
-        <InputLabel id={brandLabelId}>Marca</InputLabel>
-        <Select
+      <Grid size={{ xs: 12, sm: 6 }}>
+        <SelectField
+          label={loadingBrands ? 'Carregando marcas...' : 'Marca'}
           labelId={brandLabelId}
-          label="Marca"
           value={brandId}
-          onChange={(event) => onBrandChange(event.target.value)}
-        >
-          {brands.map((brand) => (
-            <MenuItem key={getOptionId(brand)} value={getOptionId(brand)}>
-              {getOptionName(brand)}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+          disabled={!brands.length || loadingBrands}
+          options={brands.map((brand) => ({
+            value: getOptionId(brand),
+            label: getOptionName(brand),
+          }))}
+          onChange={onBrandChange}
+        />
+      </Grid>
 
-      <FormControl fullWidth disabled={loadingModels || !brandId || !models.length}>
-        <InputLabel id={modelLabelId}>Modelo</InputLabel>
-        <Select
+      <Grid size={{ xs: 12, sm: 6 }}>
+        <SelectField
+          label={loadingModels ? 'Carregando modelos...' : 'Modelo'}
           labelId={modelLabelId}
-          label="Modelo"
           value={modelId}
-          onChange={(event) => onModelChange(event.target.value)}
-        >
-          {models.map((model) => (
-            <MenuItem key={getOptionId(model)} value={getOptionId(model)}>
-              {getOptionName(model)}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+          disabled={loadingModels || !brandId || !models.length}
+          options={models.map((model) => ({
+            value: getOptionId(model),
+            label: getOptionName(model),
+          }))}
+          onChange={onModelChange}
+        />
+      </Grid>
 
-      <FormControl fullWidth disabled={!modelId || loadingYears || !years.length}>
-        <InputLabel id={yearLabelId}>Ano</InputLabel>
-        <Select
+      <Grid size={{ xs: 12, sm: 6 }}>
+        <SelectField
+          label={loadingYears ? 'Carregando anos...' : 'Ano'}
           labelId={yearLabelId}
-          label="Ano"
           value={yearId}
-          onChange={(event) => onYearChange(event.target.value)}
-        >
-          {years.map((year) => (
-            <MenuItem key={getOptionId(year)} value={getOptionId(year)}>
-              {getOptionName(year)}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
-    </Stack>
+          disabled={!modelId || loadingYears || !years.length}
+          options={years.map((year) => ({
+            value: getOptionId(year),
+            label: getOptionName(year),
+          }))}
+          onChange={onYearChange}
+        />
+      </Grid>
+    </Grid>
   )
 }

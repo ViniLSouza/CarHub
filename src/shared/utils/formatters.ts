@@ -65,3 +65,21 @@ export function toIsoDate(displayDate: string): string {
 
   return `${year}-${month}-${day}`
 }
+
+export function toDisplayDate(value: string): string {
+  if (!value) {
+    return ''
+  }
+
+  if (value.includes('/')) {
+    return formatDateDisplay(value)
+  }
+
+  const [year, month, day] = value.split('-')
+
+  if (year?.length === 4 && month?.length === 2 && day?.length === 2) {
+    return `${day}/${month}/${year}`
+  }
+
+  return formatDateDisplay(value)
+}

@@ -1,21 +1,10 @@
 import AddCircleOutlineRoundedIcon from '@mui/icons-material/AddCircleOutlineRounded'
 import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
 import {
-  Alert,
   Box,
   Button,
   Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Paper,
-  Select,
   Stack,
-  TextField,
   Typography,
 } from '@mui/material'
 import { useEffect, useMemo, useState } from 'react'
@@ -38,51 +27,21 @@ import {
   type ApiOption,
   type VehicleType,
 } from '../../api/fipeApi'
-import { FipeSelectors } from '../../components/FipeSelectors'
-import { doorOptions, fuelOptions, transmissionOptions } from '../../shared/constants/vehicle'
 import {
   formatCurrencyDisplay,
   formatDateDisplay,
   parseApiPriceToNumber,
   parseDisplayCurrencyToNumber,
+  toDisplayDate,
   toCurrencyDisplayFromInput,
   toIsoDate,
 } from '../../shared/utils/formatters'
+import { ApiResponseDialog } from '../../components/ApiResponseDialog'
+import { GradientHeroCard } from '../../components/GradientHeroCard'
+import { AddVehicleDialog } from './components/AddVehicleDialog'
 import { StockVehiclesTable, type StockCarRow } from './components/StockVehiclesTable'
-
-type VehicleDetailsForm = {
-  type: string
-  brand: string
-  model: string
-  year: string
-  plate: string
-  renavam: string
-  color: string
-  currentKm: string
-  fuel: string
-  transmission: string
-  doors: string
-  fipe: string
-  paidValue: string
-  purchaseDate: string
-}
-
-const EMPTY_VEHICLE_DETAILS_FORM: VehicleDetailsForm = {
-  type: '',
-  brand: '',
-  model: '',
-  year: '',
-  plate: '',
-  renavam: '',
-  color: '',
-  currentKm: '',
-  fuel: '',
-  transmission: '',
-  doors: '',
-  fipe: '',
-  paidValue: '',
-  purchaseDate: '',
-}
+import { VehicleDetailsDialog } from './components/VehicleDetailsDialog'
+import { EMPTY_VEHICLE_DETAILS_FORM, type VehicleDetailsForm } from './types'
 
 function mapVehicleToStockCar(vehicle: StockVehicle): StockCarRow {
   const parsedYear = Number(vehicle.year)
@@ -131,8 +90,27 @@ export function EstoquePage() {
   const [vehicleDetailsForm, setVehicleDetailsForm] = useState<VehicleDetailsForm>(
     EMPTY_VEHICLE_DETAILS_FORM,
   )
+  const [apiResponseDialog, setApiResponseDialog] = useState<{
+    open: boolean
+    title: string
+    message: string
+    severity: 'success' | 'error'
+  }>({
+    open: false,
+    title: '',
+    message: '',
+    severity: 'success',
+  })
   const [stockCarsError, setStockCarsError] = useState('')
   const [submitError, setSubmitError] = useState('')
+
+  const openApiResponseDialog = (title: string, message: string, severity: 'success' | 'error') => {
+    setApiResponseDialog({ open: true, title, message, severity })
+  }
+
+  const closeApiResponseDialog = () => {
+    setApiResponseDialog((prev) => ({ ...prev, open: false }))
+  }
 
   const selectedBrandName = useMemo(
     () => {
@@ -388,8 +366,9 @@ export function EstoquePage() {
 
     const currentKm = Number(vehicleDetailsForm.currentKm)
     const doorsCount = Number(vehicleDetailsForm.doors)
-    const fipeValue = Number(vehicleDetailsForm.fipe)
-    const paidValue = Number(vehicleDetailsForm.paidValue)
+    const fipeValue = parseDisplayCurrencyToNumber(vehicleDetailsForm.fipe)
+    const paidValue = parseDisplayCurrencyToNumber(vehicleDetailsForm.paidValue)
+    const purchaseDate = toIsoDate(vehicleDetailsForm.purchaseDate)
 
     if (
       !vehicleDetailsForm.type.trim() ||
@@ -401,7 +380,7 @@ export function EstoquePage() {
       !vehicleDetailsForm.color.trim() ||
       !vehicleDetailsForm.fuel.trim() ||
       !vehicleDetailsForm.transmission.trim() ||
-      !vehicleDetailsForm.purchaseDate.trim() ||
+      !purchaseDate ||
       !Number.isFinite(currentKm) ||
       currentKm <= 0 ||
       !Number.isFinite(doorsCount) ||
@@ -430,7 +409,7 @@ export function EstoquePage() {
       doors: doorsCount,
       fipe: fipeValue,
       paidValue,
-      purchaseDate: vehicleDetailsForm.purchaseDate.trim(),
+      purchaseDate,
     }
 
     setUpdatingVehicleDetails(true)
@@ -441,10 +420,14 @@ export function EstoquePage() {
       const updatedVehicle = await updateVehicleApi(selectedVehicleDetails.id, payload)
       setSelectedVehicleDetails(updatedVehicle)
       setVehicleDetailsForm(mapVehicleToDetailsForm(updatedVehicle))
-      setVehicleDetailsSuccess('Veiculo atualizado com sucesso.')
+      setVehicleDetailsSuccess('')
+      openApiResponseDialog('Atualizacao concluida', 'Veiculo atualizado com sucesso.', 'success')
       await loadStockCars()
     } catch (error) {
-      setVehicleDetailsError(error instanceof Error ? error.message : 'Nao foi possivel atualizar o veiculo.')
+      const errorMessage =
+        error instanceof Error ? error.message : 'Nao foi possivel atualizar o veiculo.'
+      setVehicleDetailsError('')
+      openApiResponseDialog('Falha na atualizacao', errorMessage, 'error')
     } finally {
       setUpdatingVehicleDetails(false)
     }
@@ -463,8 +446,12 @@ export function EstoquePage() {
       await deleteVehicleApi(selectedVehicleDetails.id)
       await loadStockCars()
       handleCloseDetailsModal()
+      openApiResponseDialog('Exclusao concluida', 'Veiculo excluido com sucesso.', 'success')
     } catch (error) {
-      setVehicleDetailsError(error instanceof Error ? error.message : 'Nao foi possivel excluir o veiculo.')
+      const errorMessage =
+        error instanceof Error ? error.message : 'Nao foi possivel excluir o veiculo.'
+      setVehicleDetailsError('')
+      openApiResponseDialog('Falha na exclusao', errorMessage, 'error')
     } finally {
       setDeletingVehicleDetails(false)
     }
@@ -536,8 +523,11 @@ export function EstoquePage() {
       ])
 
       handleCloseModal()
+      openApiResponseDialog('Cadastro concluido', 'Veiculo cadastrado com sucesso.', 'success')
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'Nao foi possivel salvar o veiculo.')
+      const errorMessage = error instanceof Error ? error.message : 'Nao foi possivel salvar o veiculo.'
+      setSubmitError('')
+      openApiResponseDialog('Falha no cadastro', errorMessage, 'error')
     } finally {
       setSavingVehicle(false)
     }
@@ -545,61 +535,52 @@ export function EstoquePage() {
 
   return (
     <Stack spacing={3}>
-      <Paper
-        elevation={0}
-        sx={{
-          borderRadius: 4,
-          border: '1px solid',
-          borderColor: 'rgba(20, 40, 80, 0.10)',
-          p: { xs: 2, md: 3 },
-          background:
-            'linear-gradient(135deg, rgba(29, 79, 145, 0.10) 0%, rgba(255, 255, 255, 1) 62%)',
-        }}
-      >
-        <Stack spacing={2}>
+      <GradientHeroCard
+        chip={
           <Chip
             icon={<Inventory2RoundedIcon />}
-            label="Estoque de carros"
-            sx={{ width: 'fit-content', fontWeight: 600 }}
-          />
-
-          <Box
+            label="Gestão de estoque"
             sx={{
-              display: 'flex',
-              alignItems: { xs: 'stretch', sm: 'center' },
-              justifyContent: 'space-between',
-              gap: 1.5,
-              flexDirection: { xs: 'column', sm: 'row' },
+              width: 'fit-content',
+              fontWeight: 700,
+              bgcolor: 'rgba(56,189,248,0.18)',
+              color: '#38bdf8',
+              border: '1px solid rgba(56,189,248,0.3)',
+              '& .MuiChip-icon': { color: '#38bdf8' },
+            }}
+          />
+        }
+        title={
+          <Typography variant="h4" sx={{ fontWeight: 800, color: '#fff', lineHeight: 1.25 }}>
+            Veículos{' '}
+            <Box component="span" sx={{ color: '#38bdf8' }}>
+              disponíveis no pátio
+            </Box>
+          </Typography>
+        }
+        description={
+          <Typography sx={{ color: 'rgba(255,255,255,0.7)', mt: 0.75, lineHeight: 1.6 }}>
+            Visualize, edite e gerencie os veículos cadastrados no estoque.
+          </Typography>
+        }
+        sideContent={
+          <Button
+            variant="contained"
+            size="large"
+            startIcon={<AddCircleOutlineRoundedIcon />}
+            onClick={handleOpenModal}
+            sx={{
+              flexShrink: 0,
+              fontWeight: 700,
+              bgcolor: '#38bdf8',
+              color: '#0d1b2a',
+              '&:hover': { bgcolor: '#0ea5e9', boxShadow: '0 4px 16px rgba(56,189,248,0.45)' },
             }}
           >
-            <Box>
-              <Typography variant="h4" sx={{ fontWeight: 800, color: '#13233e' }}>
-                Carros disponíveis no pátio
-              </Typography>
-              <Typography sx={{ color: '#4a5b78', mt: 0.5 }}>
-                Visualize rapidamente marca, modelo e ano dos veículos cadastrados.
-              </Typography>
-            </Box>
-
-            <Button
-              variant="contained"
-              size="large"
-              startIcon={<AddCircleOutlineRoundedIcon />}
-              onClick={handleOpenModal}
-              sx={{
-                textTransform: 'none',
-                fontWeight: 700,
-                borderRadius: 999,
-                px: 2.5,
-                bgcolor: '#1d4f91',
-                '&:hover': { bgcolor: '#153f75' },
-              }}
-            >
-              Adicionar carro
-            </Button>
-          </Box>
-        </Stack>
-      </Paper>
+            Adicionar veículo
+          </Button>
+        }
+      />
 
       <StockVehiclesTable
         rows={stockCars}
@@ -610,354 +591,85 @@ export function EstoquePage() {
         }}
       />
 
-      <Dialog
+      <AddVehicleDialog
         open={isModalOpen}
         onClose={handleCloseModal}
-        fullWidth
-        maxWidth="sm"
-        aria-labelledby="add-car-dialog-title"
-      >
-        <DialogTitle id="add-car-dialog-title" sx={{ fontWeight: 700 }}>
-          Adicionar veiculo ao estoque
-        </DialogTitle>
+        vehicleType={vehicleType}
+        brandId={brandId}
+        modelId={modelId}
+        yearId={yearId}
+        brands={brands}
+        models={models}
+        years={years}
+        loadingBrands={loadingBrands}
+        loadingModels={loadingModels}
+        loadingYears={loadingYears}
+        loadingPrice={loadingPrice}
+        fipeDisplay={fipeDisplay}
+        paidValueDisplay={paidValueDisplay}
+        purchaseDateDisplay={purchaseDateDisplay}
+        plate={plate}
+        renavam={renavam}
+        color={color}
+        currentKmDisplay={currentKmDisplay}
+        fuel={fuel}
+        transmission={transmission}
+        doors={doors}
+        submitError={submitError}
+        savingVehicle={savingVehicle}
+        onVehicleTypeChange={(value) => {
+          setVehicleType(value)
+          clearDependentFieldsFromType()
+        }}
+        onBrandChange={(value) => {
+          setBrandId(value)
+          clearDependentFieldsFromBrand()
+        }}
+        onModelChange={(value) => {
+          setModelId(value)
+          clearDependentFieldsFromModel()
+        }}
+        onYearChange={(value) => setYearId(value)}
+        onPaidValueChange={(value) => setPaidValueDisplay(toCurrencyDisplayFromInput(value))}
+        onPurchaseDateChange={(value) => setPurchaseDateDisplay(formatDateDisplay(value))}
+        onPlateChange={(value) => setPlate(value)}
+        onRenavamChange={(value) => setRenavam(value.replace(/\D/g, '').slice(0, 11))}
+        onColorChange={(value) => setColor(value)}
+        onCurrentKmChange={(value) => setCurrentKmDisplay(value.replace(/\D/g, ''))}
+        onFuelChange={(value) => setFuel(value)}
+        onTransmissionChange={(value) => setTransmission(value)}
+        onDoorsChange={(value) => setDoors(value)}
+        onSubmit={() => {
+          void handleSubmit()
+        }}
+      />
 
-        <DialogContent>
-          <Stack spacing={2} sx={{ pt: 1 }}>
-            <FipeSelectors
-              idPrefix="stock"
-              vehicleType={vehicleType}
-              brandId={brandId}
-              modelId={modelId}
-              yearId={yearId}
-              brands={brands}
-              models={models}
-              years={years}
-              loadingBrands={loadingBrands}
-              loadingModels={loadingModels}
-              loadingYears={loadingYears}
-              onVehicleTypeChange={(value) => {
-                setVehicleType(value)
-                clearDependentFieldsFromType()
-              }}
-              onBrandChange={(value) => {
-                setBrandId(value)
-                clearDependentFieldsFromBrand()
-              }}
-              onModelChange={(value) => {
-                setModelId(value)
-                clearDependentFieldsFromModel()
-              }}
-              onYearChange={(value) => setYearId(value)}
-            />
-
-            <TextField
-              label="Fipe"
-              value={fipeDisplay}
-              disabled
-              placeholder={loadingPrice ? 'Carregando valor FIPE...' : 'Selecione os filtros acima'}
-              fullWidth
-            />
-
-            <TextField
-              label="Valor pago"
-              value={paidValueDisplay}
-              onChange={(event) => {
-                setPaidValueDisplay(toCurrencyDisplayFromInput(event.target.value))
-              }}
-              placeholder="R$0,00"
-              fullWidth
-            />
-
-            <TextField
-              label="Data da compra"
-              value={purchaseDateDisplay}
-              onChange={(event) => {
-                setPurchaseDateDisplay(formatDateDisplay(event.target.value))
-              }}
-              placeholder="dd/mm/aaaa"
-              fullWidth
-            />
-
-            <TextField
-              label="Placa"
-              value={plate}
-              onChange={(event) => {
-                setPlate(event.target.value)
-              }}
-              placeholder="ABC1D23"
-              fullWidth
-            />
-
-            <TextField
-              label="Renavam"
-              value={renavam}
-              onChange={(event) => {
-                setRenavam(event.target.value.replace(/\D/g, '').slice(0, 11))
-              }}
-              placeholder="Somente numeros"
-              fullWidth
-            />
-
-            <TextField
-              label="Cor"
-              value={color}
-              onChange={(event) => {
-                setColor(event.target.value)
-              }}
-              placeholder="Ex: Branco"
-              fullWidth
-            />
-
-            <TextField
-              label="KM atual"
-              value={currentKmDisplay}
-              onChange={(event) => {
-                setCurrentKmDisplay(event.target.value.replace(/\D/g, ''))
-              }}
-              placeholder="Ex: 45000"
-              fullWidth
-            />
-
-            <FormControl fullWidth>
-              <InputLabel id="stock-fuel-label">Combustivel</InputLabel>
-              <Select
-                labelId="stock-fuel-label"
-                label="Combustivel"
-                value={fuel}
-                onChange={(event) => setFuel(event.target.value)}
-              >
-                {fuelOptions.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <FormControl fullWidth>
-              <InputLabel id="stock-transmission-label">Cambio</InputLabel>
-              <Select
-                labelId="stock-transmission-label"
-                label="Cambio"
-                value={transmission}
-                onChange={(event) => setTransmission(event.target.value)}
-              >
-                {transmissionOptions.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <FormControl fullWidth>
-              <InputLabel id="stock-doors-label">Numero de portas</InputLabel>
-              <Select
-                labelId="stock-doors-label"
-                label="Numero de portas"
-                value={doors}
-                onChange={(event) => setDoors(event.target.value)}
-              >
-                {doorOptions.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            {submitError && (
-              <Alert severity="warning" sx={{ borderRadius: 2 }}>
-                {submitError}
-              </Alert>
-            )}
-          </Stack>
-        </DialogContent>
-
-        <DialogActions sx={{ px: 3, pb: 2.5 }}>
-          <Button onClick={handleCloseModal} sx={{ textTransform: 'none', fontWeight: 600 }}>
-            Cancelar
-          </Button>
-          <Button
-            variant="contained"
-            onClick={() => {
-              void handleSubmit()
-            }}
-            disabled={savingVehicle}
-            sx={{ textTransform: 'none', fontWeight: 700, bgcolor: '#1d4f91' }}
-          >
-            {savingVehicle ? 'Salvando...' : 'Salvar veiculo'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog
+      <VehicleDetailsDialog
         open={isDetailsModalOpen}
         onClose={handleCloseDetailsModal}
-        fullWidth
-        maxWidth="sm"
-        aria-labelledby="vehicle-details-dialog-title"
-      >
-        <DialogTitle id="vehicle-details-dialog-title" sx={{ fontWeight: 700 }}>
-          Detalhes do veiculo
-        </DialogTitle>
+        loadingVehicleDetails={loadingVehicleDetails}
+        updatingVehicleDetails={updatingVehicleDetails}
+        deletingVehicleDetails={deletingVehicleDetails}
+        vehicleDetailsError={vehicleDetailsError}
+        vehicleDetailsSuccess={vehicleDetailsSuccess}
+        selectedVehicleDetails={selectedVehicleDetails}
+        vehicleDetailsForm={vehicleDetailsForm}
+        setVehicleDetailsForm={setVehicleDetailsForm}
+        onDelete={() => {
+          void handleDeleteVehicleDetails()
+        }}
+        onUpdate={() => {
+          void handleUpdateVehicleDetails()
+        }}
+      />
 
-        <DialogContent>
-          <Stack spacing={1.25} sx={{ pt: 1 }}>
-            {loadingVehicleDetails && (
-              <Typography sx={{ color: '#4a5b78' }}>Carregando detalhes...</Typography>
-            )}
-
-            {vehicleDetailsError && (
-              <Alert severity="warning" sx={{ borderRadius: 2 }}>
-                {vehicleDetailsError}
-              </Alert>
-            )}
-
-            {vehicleDetailsSuccess && (
-              <Alert severity="success" sx={{ borderRadius: 2 }}>
-                {vehicleDetailsSuccess}
-              </Alert>
-            )}
-
-            {!loadingVehicleDetails && selectedVehicleDetails && (
-              <>
-                <TextField
-                  label="Marca"
-                  value={vehicleDetailsForm.brand}
-                  disabled
-                  fullWidth
-                />
-                <TextField
-                  label="Modelo"
-                  value={vehicleDetailsForm.model}
-                  disabled
-                  fullWidth
-                />
-                <TextField
-                  label="Ano"
-                  value={vehicleDetailsForm.year}
-                  disabled
-                  fullWidth
-                />
-                <TextField
-                  label="Placa"
-                  value={vehicleDetailsForm.plate}
-                  onChange={(event) => {
-                    setVehicleDetailsForm((prev) => ({ ...prev, plate: event.target.value.toUpperCase() }))
-                  }}
-                  fullWidth
-                />
-                <TextField
-                  label="Renavam"
-                  value={vehicleDetailsForm.renavam}
-                  onChange={(event) => {
-                    setVehicleDetailsForm((prev) => ({
-                      ...prev,
-                      renavam: event.target.value.replace(/\D/g, '').slice(0, 11),
-                    }))
-                  }}
-                  fullWidth
-                />
-                <TextField
-                  label="Cor"
-                  value={vehicleDetailsForm.color}
-                  onChange={(event) => {
-                    setVehicleDetailsForm((prev) => ({ ...prev, color: event.target.value }))
-                  }}
-                  fullWidth
-                />
-                <TextField
-                  label="KM atual"
-                  value={vehicleDetailsForm.currentKm}
-                  onChange={(event) => {
-                    setVehicleDetailsForm((prev) => ({
-                      ...prev,
-                      currentKm: event.target.value.replace(/\D/g, ''),
-                    }))
-                  }}
-                  fullWidth
-                />
-                <TextField
-                  label="Combustivel"
-                  value={vehicleDetailsForm.fuel}
-                  onChange={(event) => {
-                    setVehicleDetailsForm((prev) => ({ ...prev, fuel: event.target.value }))
-                  }}
-                  fullWidth
-                />
-                <TextField
-                  label="Cambio"
-                  value={vehicleDetailsForm.transmission}
-                  onChange={(event) => {
-                    setVehicleDetailsForm((prev) => ({ ...prev, transmission: event.target.value }))
-                  }}
-                  fullWidth
-                />
-                <TextField
-                  label="Portas"
-                  value={vehicleDetailsForm.doors}
-                  onChange={(event) => {
-                    setVehicleDetailsForm((prev) => ({ ...prev, doors: event.target.value.replace(/\D/g, '') }))
-                  }}
-                  fullWidth
-                />
-                <TextField
-                  label="FIPE"
-                  value={vehicleDetailsForm.fipe}
-                  onChange={(event) => {
-                    setVehicleDetailsForm((prev) => ({ ...prev, fipe: event.target.value.replace(',', '.') }))
-                  }}
-                  fullWidth
-                />
-                <TextField
-                  label="Valor pago"
-                  value={vehicleDetailsForm.paidValue}
-                  onChange={(event) => {
-                    setVehicleDetailsForm((prev) => ({ ...prev, paidValue: event.target.value.replace(',', '.') }))
-                  }}
-                  fullWidth
-                />
-                <TextField
-                  label="Data da compra"
-                  value={vehicleDetailsForm.purchaseDate}
-                  onChange={(event) => {
-                    setVehicleDetailsForm((prev) => ({ ...prev, purchaseDate: event.target.value }))
-                  }}
-                  placeholder="AAAA-MM-DD"
-                  fullWidth
-                />
-              </>
-            )}
-          </Stack>
-        </DialogContent>
-
-        <DialogActions sx={{ px: 3, pb: 2.5 }}>
-          <Button
-            color="error"
-            onClick={() => {
-              void handleDeleteVehicleDetails()
-            }}
-            disabled={!selectedVehicleDetails || loadingVehicleDetails || updatingVehicleDetails || deletingVehicleDetails}
-            sx={{ textTransform: 'none', fontWeight: 700 }}
-          >
-            {deletingVehicleDetails ? 'Excluindo...' : 'Excluir'}
-          </Button>
-          <Button
-            variant="contained"
-            onClick={() => {
-              void handleUpdateVehicleDetails()
-            }}
-            disabled={!selectedVehicleDetails || loadingVehicleDetails || updatingVehicleDetails || deletingVehicleDetails}
-            sx={{ textTransform: 'none', fontWeight: 700, bgcolor: '#1d4f91' }}
-          >
-            {updatingVehicleDetails ? 'Atualizando...' : 'Salvar alteracoes'}
-          </Button>
-          <Button onClick={handleCloseDetailsModal} sx={{ textTransform: 'none', fontWeight: 600 }}>
-            Fechar
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ApiResponseDialog
+        open={apiResponseDialog.open}
+        title={apiResponseDialog.title}
+        message={apiResponseDialog.message}
+        severity={apiResponseDialog.severity}
+        onClose={closeApiResponseDialog}
+      />
     </Stack>
   )
 }
@@ -975,8 +687,8 @@ function mapVehicleToDetailsForm(vehicle: StockVehicle): VehicleDetailsForm {
     fuel: vehicle.fuel,
     transmission: vehicle.transmission,
     doors: String(vehicle.doors),
-    fipe: String(vehicle.fipe),
-    paidValue: String(vehicle.paidValue),
-    purchaseDate: vehicle.purchaseDate,
+    fipe: formatCurrencyDisplay(vehicle.fipe),
+    paidValue: formatCurrencyDisplay(vehicle.paidValue),
+    purchaseDate: toDisplayDate(vehicle.purchaseDate),
   }
 }
